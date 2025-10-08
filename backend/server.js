@@ -36,7 +36,10 @@ dbClient
   .connect()
   .then(async () => {
     console.log("✅ Connected to PostgreSQL");
-    // await dbClient.query(`DROP TABLE IF EXISTS cart`);
+    
+    // Uncomment this line to reset all tables (will clear existing data)
+    // await dbClient.query(`DROP TABLE IF EXISTS wishlist, cart, users`);
+    
     await dbClient.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -57,7 +60,20 @@ dbClient
       )
     `);
 
-    console.log("✅ Tables ensured: users, cart");
+    await dbClient.query(`
+      CREATE TABLE IF NOT EXISTS wishlist (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        item_name TEXT NOT NULL,
+        price TEXT NOT NULL,
+        image TEXT NOT NULL,
+        category TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, item_name)
+      )
+    `);
+
+    console.log("✅ Tables ensured: users, cart, wishlist");
   })
   .catch((err) => console.error("❌ DB connection error:", err));
 
@@ -173,17 +189,17 @@ app.get("/cart/:userId", async (req, res) => {
 // Update cart item quantity
 app.put("/cart/update", async (req, res) => {
   const { itemId, quantity } = req.body;
-  
+
   try {
     const result = await dbClient.query(
       `UPDATE cart SET quantity = $1 WHERE id = $2 RETURNING *`,
       [quantity, itemId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Item not found" });
     }
-    
+
     res.json(result.rows[0]);
   } catch (err) {
     console.error("❌ Cart update error:", err);
@@ -193,21 +209,108 @@ app.put("/cart/update", async (req, res) => {
 
 app.delete("/cart/remove/:itemId", async (req, res) => {
   const { itemId } = req.params;
-  
+
   try {
     const result = await dbClient.query(
       `DELETE FROM cart WHERE id = $1 RETURNING *`,
       [itemId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Item not found" });
     }
-    
+
     res.json({ message: "Item removed from cart" });
   } catch (err) {
     console.error("❌ Cart remove error:", err);
     res.status(500).json({ error: "Failed to remove item from cart" });
+  }
+});
+// add to wishlist
+// Wishlist API Endpoints
+
+// Add to wishlist
+app.post("/wishlist/add", async (req, res) => {
+  const { userId, itemName, price, image, category } = req.body;
+  
+  if (!userId || !itemName) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await dbClient.query(
+      `INSERT INTO wishlist (user_id, item_name, price, image, category)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, item_name) DO NOTHING
+       RETURNING *`,
+      [userId, itemName, price || '₹0.00', image || '', category || '']
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(409).json({ error: "Item already in wishlist" });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Wishlist add error:", err);
+    res.status(500).json({ error: "Failed to add item to wishlist" });
+  }
+});
+
+// Remove from wishlist
+app.delete("/wishlist/remove", async (req, res) => {
+  const { userId, itemName } = req.body;
+  
+  if (!userId || !itemName) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await dbClient.query(
+      `DELETE FROM wishlist WHERE user_id = $1 AND item_name = $2 RETURNING *`,
+      [userId, itemName]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found in wishlist" });
+    }
+    
+    res.json({ message: "Item removed from wishlist" });
+  } catch (err) {
+    console.error("❌ Wishlist remove error:", err);
+    res.status(500).json({ error: "Failed to remove item from wishlist" });
+  }
+});
+
+// Get user's wishlist
+app.get("/wishlist/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const result = await dbClient.query(
+      "SELECT * FROM wishlist WHERE user_id = $1 ORDER BY created_at DESC",
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Fetch wishlist error:", err);
+    res.status(500).json({ error: "Failed to fetch wishlist" });
+  }
+});
+
+// Check if item is in wishlist
+app.get("/wishlist/:userId/:itemName", async (req, res) => {
+  const { userId, itemName } = req.params;
+  
+  try {
+    const result = await dbClient.query(
+      "SELECT * FROM wishlist WHERE user_id = $1 AND item_name = $2",
+      [userId, itemName]
+    );
+    res.json({ isInWishlist: result.rows.length > 0 });
+  } catch (err) {
+    console.error("❌ Check wishlist error:", err);
+    res.status(500).json({ error: "Failed to check wishlist" });
   }
 });
 

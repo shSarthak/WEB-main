@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-
+import WishListButton from "./WishListButton";
 const ProductCard = ({ product, quantity, onQuantityChange, onAddToCart }) => {
   const [isAdded, setIsAdded] = useState(false);
   const [showQuantitySelector, setShowQuantitySelector] = useState(false);
-
+  const user =JSON.parse(sessionStorage.getItem("user"));
+  const userId = user?.id;
 const handleAddToCartClick = async () => {
   if (!showQuantitySelector) {
     // First click - show quantity selector
@@ -99,6 +100,9 @@ const handleAddToCartClick = async () => {
         </div>
       ) : null}
 
+      <div className="top-2 right-2 z-10">
+        <WishListButton product={product} userId={userId} />
+      </div>
       <button
         onClick={handleAddToCartClick}
         className={`w-full py-2 px-4 rounded transition-colors ${

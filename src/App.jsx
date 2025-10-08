@@ -7,7 +7,7 @@ import Footer from "./Footer";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import CartPage from "./CartPage";
 import { CartProvider } from "./CartContext"; // Updated import
-
+import WishlistPage from "./WishListPage";
 function App() {
   return (
     <CartProvider>
@@ -25,6 +25,7 @@ function App() {
               }
             />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
           </Routes>
           <Footer />
         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Phone, User, ShoppingCart, X } from 'lucide-react';
 import GoogleLoginButton from './GoogleLoginButton';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Heart } from 'lucide-react';
 import { Link } from "react-router-dom";
 
 // Sign In Modal Component (keep your existing markup/ styles)
@@ -221,6 +221,10 @@ const Header = () => {
               {cartCount > 0 && (
                 <span className="bg-red-500 text-white rounded-full text-xs px-1">{cartCount}</span>
               )}
+            </Link>
+            <Link to="/wishlist" className="flex items-center gap-2 text-slate-700 hover:text-emerald-600 transition-colors">
+              <Heart size={20} />
+              Wishlist
             </Link>
           </div>
         </div>
